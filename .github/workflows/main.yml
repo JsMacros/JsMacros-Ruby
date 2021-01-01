@@ -41,7 +41,7 @@ jobs:
       - name: UnZip Js Macros
         uses: TonyBogdanov/zip@1.0
         with:
-          args: unzip -qq './libs/jsmacros.zip' -d './libs'
+          args: unzip -qq ./libs/jsmacros.zip -d ./libs
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
