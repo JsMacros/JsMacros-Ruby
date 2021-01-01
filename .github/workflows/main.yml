@@ -28,6 +28,20 @@ jobs:
         with:
           java-version: 1.8
 
+      - name: Get Js Macros
+        uses: benday-inc/download-latest-artifact@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository_owner: 'wagyourtail'
+          repository_name: 'jsmacros'
+          workflow_name: 'Build Beta'
+          brance_name: 'master'
+          download_path: '${{ github.workspace }}/libs'
+          download_filename: 'jsmacros.zip'
+      - name: UnZip Js Macros
+        uses: TonyBogdanov/zip@1.0
+        with:
+          args: unzip -qq '${{ github.workspace }}/libs/jsmacros.zip' -d '${{ github.workspace }}/libs'
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
