@@ -46,6 +46,7 @@ public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
         runInstance(ctx, instance -> {
             instance.put("event", event);
             instance.put("file", file);
+            instance.put("context", ctx);
     
             instance.runScriptlet(new FileReader(file), file.getAbsolutePath());
         }, file.getParentFile().toPath());
@@ -56,6 +57,7 @@ public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
     public void exec(ContextContainer<ScriptingContainer> ctx, String script, Map<String, Object> globals, Path currentDir) throws Exception {
         runInstance(ctx, instance -> {
             globals.forEach(instance::put);
+            instance.put("context", ctx);
             instance.runScriptlet(script);
         }, currentDir);
     }
