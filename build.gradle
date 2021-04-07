@@ -35,7 +35,7 @@ dependencies {
     implementation "org.jruby:jruby-complete:9.2.14.0"
     include "org.jruby:jruby-complete:9.2.14.0"
 
-    modImplementation "jsmacros-1.16.4:jsmacros-1.16.4:${project.jsmacros_version}:dev"
+    modImplementation "jsmacros-1.16.5:jsmacros-1.16.5:${project.jsmacros_version}:dev"
     implementation "io.noties:prism4j:${prism_version}"
 
     // https://mvnrepository.com/artifact/org.graalvm.js/js

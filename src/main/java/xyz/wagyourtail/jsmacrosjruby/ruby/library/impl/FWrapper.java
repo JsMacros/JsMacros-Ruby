@@ -6,53 +6,48 @@ import org.jruby.javasupport.JavaUtil;
 import org.jruby.parser.StaticScope;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import xyz.wagyourtail.jsmacros.core.Core;
 import xyz.wagyourtail.jsmacros.core.MethodWrapper;
 import xyz.wagyourtail.jsmacros.core.language.BaseLanguage;
-import xyz.wagyourtail.jsmacros.core.library.IFConsumer;
+import xyz.wagyourtail.jsmacros.core.language.ContextContainer;
+import xyz.wagyourtail.jsmacros.core.library.IFWrapper;
 import xyz.wagyourtail.jsmacros.core.library.Library;
 import xyz.wagyourtail.jsmacros.core.library.PerExecLanguageLibrary;
 import xyz.wagyourtail.jsmacrosjruby.ruby.language.impl.RubyLanguageDefinition;
+import xyz.wagyourtail.jsmacrosjruby.ruby.language.impl.RubyScriptContext;
 
-@Library(value = "consumer", languages = RubyLanguageDefinition.class)
-public class FConsumer extends PerExecLanguageLibrary<IFConsumer> implements IFConsumer<RubyMethod, RubyMethod, RubyMethod> {
+@Library(value = "JavaWrapper", languages = RubyLanguageDefinition.class)
+public class FWrapper extends PerExecLanguageLibrary<ScriptingContainer> implements IFWrapper<RubyMethod> {
+    public RubyScriptContext ctx;
     
-    
-    public FConsumer(Class<? extends BaseLanguage> language, Object context, Thread thread) {
-        super(language, context, thread);
+    public FWrapper(ContextContainer<ScriptingContainer> context, Class<? extends BaseLanguage<ScriptingContainer>> language) {
+        super(context, language);
+        ctx = (RubyScriptContext) context.getCtx();
     }
     
     @Override
-    public <A, B, R> MethodWrapper<A, B, R> toConsumer(RubyMethod c) {
-        return autoWrap(c);
-    }
-    
-    @Override
-    public <A, B, R> MethodWrapper<A, B, R> toBiConsumer(RubyMethod c) {
-        return autoWrap(c);
-    }
-    
-    @Override
-    public <A, B, R> MethodWrapper<A, B, R> toAsyncConsumer(RubyMethod c) {
-        return autoWrapAsync(c);
-    }
-    
-    @Override
-    public <A, B, R> MethodWrapper<A, B, R> toAsyncBiConsumer(RubyMethod c) {
-        return autoWrapAsync(c);
-    }
-    
-    @Override
-    public <A, B, R> MethodWrapper<A, B, R> autoWrap(RubyMethod c) {
+    public <A, B, R> MethodWrapper<A, B, R> methodToJava(RubyMethod c) {
+        ScriptingContainer sc = ctx.getContext().get();
         return new MethodWrapper<A, B, R>() {
             private Object internalAccept(Object ...objects) {
-                ThreadContext threadContext = ((ScriptingContainer) context).getProvider().getRuntime().getCurrentContext();
-                threadContext.pushNewScope(threadContext.getCurrentStaticScope());
-                IRubyObject[] rubyObjects = JavaUtil.convertJavaArrayToRuby(threadContext.runtime, objects);
-                IRubyObject rubyReturn = c.call(threadContext, rubyObjects, threadContext.getFrameBlock());
-                if (rubyReturn == null) {
-                    return null;
-                } else {
-                    return rubyReturn.toJava(Object.class);
+                synchronized (ctx) {
+                    if (ctx.closed) throw new RuntimeException("Context Closed");
+                    Core.instance.threadContext.put(Thread.currentThread(), ctx);
+                }
+                try {
+                    ThreadContext threadContext = ((ScriptingContainer) sc).getProvider().getRuntime().getCurrentContext();
+                    threadContext.pushNewScope(threadContext.getCurrentStaticScope());
+                    IRubyObject[] rubyObjects = JavaUtil.convertJavaArrayToRuby(threadContext.runtime, objects);
+                    IRubyObject rubyReturn = c.call(threadContext, rubyObjects, threadContext.getFrameBlock());
+                    if (rubyReturn == null) {
+                        return null;
+                    } else {
+                        return rubyReturn.toJava(Object.class);
+                    }
+                } finally {
+                    synchronized (ctx) {
+                        Core.instance.threadContext.remove(Thread.currentThread());
+                    }
                 }
             }
             
@@ -104,23 +99,38 @@ public class FConsumer extends PerExecLanguageLibrary<IFConsumer> implements IFC
     }
     
     @Override
-    public <A, B, R> MethodWrapper<A, B, R> autoWrapAsync(RubyMethod c) {
+    public <A, B, R> MethodWrapper<A, B, R> methodToJavaAsync(RubyMethod c) {
+        ScriptingContainer sc = ctx.getContext().get();
         return new MethodWrapper<A, B, R>() {
             private Object internalAccept(Object ...objects) {
-                ThreadContext threadContext = ((ScriptingContainer) context).getProvider().getRuntime().getCurrentContext();
-                threadContext.pushNewScope(threadContext.getCurrentStaticScope());
-                IRubyObject[] rubyObjects = JavaUtil.convertJavaArrayToRuby(threadContext.runtime, objects);
-                IRubyObject rubyReturn = c.call(threadContext, rubyObjects, threadContext.getFrameBlock());
-                if (rubyReturn == null) {
-                    return null;
-                } else {
-                    return rubyReturn.toJava(Object.class);
+                synchronized (ctx) {
+                    if (ctx.closed) throw new RuntimeException("Context Closed");
+                    Core.instance.threadContext.put(Thread.currentThread(), ctx);
+                }
+                try {
+                    ThreadContext threadContext = ((ScriptingContainer) sc).getProvider().getRuntime().getCurrentContext();
+                    threadContext.pushNewScope(threadContext.getCurrentStaticScope());
+                    IRubyObject[] rubyObjects = JavaUtil.convertJavaArrayToRuby(threadContext.runtime, objects);
+                    IRubyObject rubyReturn = c.call(threadContext, rubyObjects, threadContext.getFrameBlock());
+                    if (rubyReturn == null) {
+                        return null;
+                    } else {
+                        return rubyReturn.toJava(Object.class);
+                    }
+                } finally {
+                    synchronized (ctx) {
+                        Core.instance.threadContext.remove(Thread.currentThread());
+                    }
                 }
             }
             
             private void internalAsyncAccept(Object ...objects) {
                 Thread t = new Thread(() -> {
-                    ThreadContext threadContext = ((ScriptingContainer) context).getProvider().getRuntime().getCurrentContext();
+                    synchronized (ctx) {
+                        if (ctx.closed) throw new RuntimeException("Context Closed");
+                        Core.instance.threadContext.put(Thread.currentThread(), ctx);
+                    }
+                    ThreadContext threadContext = ((ScriptingContainer) sc).getProvider().getRuntime().getCurrentContext();
                     threadContext.pushNewScope(threadContext.getCurrentStaticScope());
                     IRubyObject[] rubyObjects = JavaUtil.convertJavaArrayToRuby(threadContext.runtime, objects);
                     c.call(threadContext, rubyObjects, threadContext.getFrameBlock());
@@ -173,6 +183,11 @@ public class FConsumer extends PerExecLanguageLibrary<IFConsumer> implements IFC
                 return (R) internalAccept();
             }
         };
+    }
+    
+    @Override
+    public void stop() {
+    
     }
     
 }
