@@ -20,8 +20,8 @@ import java.io.FileReader;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.Executor;
 
 public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
     public static final ScriptingContainer globalInstance = new ScriptingContainer();
@@ -35,9 +35,8 @@ public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
         else instance = new ScriptingContainer(LocalContextScope.SINGLETHREAD);
         ctx.getCtx().setContext(instance);
         
-        retrieveLibs(ctx).forEach(instance::put);
-    
         instance.setCurrentDirectory(cwd.toString());
+        retrieveLibs(ctx).forEach((k,v) -> instance.put(k.toLowerCase(Locale.ROOT), v));
         e.accept(instance);
     }
     

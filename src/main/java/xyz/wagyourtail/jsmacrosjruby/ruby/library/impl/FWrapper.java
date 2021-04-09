@@ -10,23 +10,24 @@ import xyz.wagyourtail.jsmacros.core.Core;
 import xyz.wagyourtail.jsmacros.core.MethodWrapper;
 import xyz.wagyourtail.jsmacros.core.language.BaseLanguage;
 import xyz.wagyourtail.jsmacros.core.language.ContextContainer;
+import xyz.wagyourtail.jsmacros.core.language.ScriptContext;
 import xyz.wagyourtail.jsmacros.core.library.IFWrapper;
 import xyz.wagyourtail.jsmacros.core.library.Library;
 import xyz.wagyourtail.jsmacros.core.library.PerExecLanguageLibrary;
+import xyz.wagyourtail.jsmacros.core.library.PerLanguageLibrary;
 import xyz.wagyourtail.jsmacrosjruby.ruby.language.impl.RubyLanguageDefinition;
 import xyz.wagyourtail.jsmacrosjruby.ruby.language.impl.RubyScriptContext;
 
 @Library(value = "JavaWrapper", languages = RubyLanguageDefinition.class)
-public class FWrapper extends PerExecLanguageLibrary<ScriptingContainer> implements IFWrapper<RubyMethod> {
-    public RubyScriptContext ctx;
+public class FWrapper extends PerLanguageLibrary implements IFWrapper<RubyMethod> {
     
-    public FWrapper(ContextContainer<ScriptingContainer> context, Class<? extends BaseLanguage<ScriptingContainer>> language) {
-        super(context, language);
-        ctx = (RubyScriptContext) context.getCtx();
+    public FWrapper(Class<? extends BaseLanguage<ScriptingContainer>> language) {
+        super(language);
     }
     
     @Override
     public <A, B, R> MethodWrapper<A, B, R> methodToJava(RubyMethod c) {
+        RubyScriptContext ctx = (RubyScriptContext) Core.instance.threadContext.get(Thread.currentThread());
         ScriptingContainer sc = ctx.getContext().get();
         return new MethodWrapper<A, B, R>() {
             private Object internalAccept(Object ...objects) {
@@ -100,6 +101,7 @@ public class FWrapper extends PerExecLanguageLibrary<ScriptingContainer> impleme
     
     @Override
     public <A, B, R> MethodWrapper<A, B, R> methodToJavaAsync(RubyMethod c) {
+        RubyScriptContext ctx = (RubyScriptContext) Core.instance.threadContext.get(Thread.currentThread());
         ScriptingContainer sc = ctx.getContext().get();
         return new MethodWrapper<A, B, R>() {
             private Object internalAccept(Object ...objects) {

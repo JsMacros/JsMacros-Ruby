@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '0.6-SNAPSHOT'
+    id 'fabric-loom' version '0.5-SNAPSHOT'
     id 'maven-publish'
 }
 
@@ -32,8 +32,8 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
 
-    implementation "org.jruby:jruby-complete:9.2.14.0"
-    include "org.jruby:jruby-complete:9.2.14.0"
+    implementation "org.jruby:jruby-complete:9.2.17.0"
+    include "org.jruby:jruby-complete:9.2.17.0"
 
     modImplementation "jsmacros-1.16.5:jsmacros-1.16.5:${project.jsmacros_version}:dev"
     implementation "io.noties:prism4j:${prism_version}"
