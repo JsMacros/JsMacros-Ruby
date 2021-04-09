@@ -13,8 +13,6 @@ import xyz.wagyourtail.jsmacros.core.language.BaseLanguage;
 import xyz.wagyourtail.jsmacros.core.language.BaseWrappedException;
 import xyz.wagyourtail.jsmacros.core.language.ContextContainer;
 import xyz.wagyourtail.jsmacros.core.language.ScriptContext;
-import xyz.wagyourtail.jsmacros.ruby.config.RubyConfig;
-
 import java.io.File;
 import java.io.FileReader;
 import java.nio.file.Path;
@@ -30,14 +28,11 @@ public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
     }
     
     protected void runInstance(ContextContainer<ScriptingContainer> ctx, Executor e, Path cwd) throws Exception {
-        ScriptingContainer instance;
-        if (runner.config.getOptions(RubyConfig.class).useGlobalContext) instance = globalInstance;
-        else instance = new ScriptingContainer(LocalContextScope.SINGLETHREAD);
-        ctx.getCtx().setContext(instance);
+        ctx.getCtx().setContext(globalInstance);
         
-        instance.setCurrentDirectory(cwd.toString());
-        retrieveLibs(ctx).forEach((k,v) -> instance.put(k.toLowerCase(Locale.ROOT), v));
-        e.accept(instance);
+        globalInstance.setCurrentDirectory(cwd.toString());
+        retrieveLibs(ctx).forEach((k,v) -> globalInstance.put(k.toLowerCase(Locale.ROOT), v));
+        e.accept(globalInstance);
     }
     
     @Override
