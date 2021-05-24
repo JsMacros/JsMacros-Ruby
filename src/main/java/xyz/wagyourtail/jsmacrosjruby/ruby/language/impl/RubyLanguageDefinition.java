@@ -2,7 +2,6 @@ package xyz.wagyourtail.jsmacrosjruby.ruby.language.impl;
 
 import org.jruby.RubyException;
 import org.jruby.embed.EvalFailedException;
-import org.jruby.embed.LocalContextScope;
 import org.jruby.embed.ScriptingContainer;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.backtrace.RubyStackTraceElement;
@@ -13,6 +12,7 @@ import xyz.wagyourtail.jsmacros.core.language.BaseLanguage;
 import xyz.wagyourtail.jsmacros.core.language.BaseWrappedException;
 import xyz.wagyourtail.jsmacros.core.language.ContextContainer;
 import xyz.wagyourtail.jsmacros.core.language.ScriptContext;
+
 import java.io.File;
 import java.io.FileReader;
 import java.nio.file.Path;
