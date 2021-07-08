@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '0.5-SNAPSHOT'
+    id 'fabric-loom' version '0.8-SNAPSHOT'
     id 'maven-publish'
 }
 
@@ -20,6 +20,7 @@ repositories {
         url 'https://maven.fabricmc.net/'
     }
     maven { url 'https://jitpack.io' }
+    maven { url 'https://www.cursemaven.com/'}
 }
 
 dependencies {
@@ -28,28 +29,10 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-    // Fabric API. This is technically optional, but you probably want it anyway.
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    implementation "org.jruby:jruby-complete:9.2.19.0"
+    include "org.jruby:jruby-complete:9.2.19.0"
 
-
-    implementation "org.jruby:jruby-complete:9.2.17.0"
-    include "org.jruby:jruby-complete:9.2.17.0"
-
-    modImplementation "jsmacros-1.16.5:jsmacros-1.16.5:${project.jsmacros_version}:dev"
-    implementation "io.noties:prism4j:${prism_version}"
-
-    // https://mvnrepository.com/artifact/org.graalvm.js/js
-    implementation group: 'org.graalvm.sdk', name: 'graal-sdk', version: '20.1.0'
-    implementation group: 'org.graalvm.js', name: 'js', version: '20.1.0'
-
-    //these ones are needed to build the mod because doesn't auto include sub-dependencies
-    implementation group: 'org.graalvm.truffle', name: 'truffle-api', version: '20.1.0'
-    implementation group: 'org.graalvm.regex', name: 'regex', version: '20.1.0'
-    implementation group: 'com.ibm.icu', name: 'icu4j', version: '64.2'
-
-
-    //websocket
-    implementation "com.neovisionaries:nv-websocket-client:2.10"
+    modImplementation "com.github.wagyourtail:JsMacros:${project.jsmacros_version}"
 
     //nullable not defined so...
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
@@ -61,13 +44,8 @@ dependencies {
 processResources {
     inputs.property "version", project.version
 
-    from(sourceSets.main.resources.srcDirs) {
-        include "fabric.mod.json"
+    filesMatching("fabric.mod.json") {
         expand "version": project.version
-    }
-
-    from(sourceSets.main.resources.srcDirs) {
-        exclude "fabric.mod.json"
     }
 }
 

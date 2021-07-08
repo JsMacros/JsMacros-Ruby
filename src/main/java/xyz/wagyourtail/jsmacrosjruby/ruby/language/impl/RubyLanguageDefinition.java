@@ -32,7 +32,12 @@ public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
         
         globalInstance.setCurrentDirectory(cwd.toString());
         retrieveLibs(ctx).forEach((k,v) -> globalInstance.put(k.toLowerCase(Locale.ROOT), v));
+
         e.accept(globalInstance);
+
+        if (((RubyScriptContext) ctx.getCtx()).nonGCdMethodWrappers.get() == 0) {
+            ctx.getCtx().closeContext();
+        }
     }
     
     @Override
@@ -73,8 +78,8 @@ public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
     }
     
     @Override
-    public ScriptContext<ScriptingContainer> createContext() {
-        return new RubyScriptContext();
+    public ScriptContext<ScriptingContainer> createContext(BaseEvent event) {
+        return new RubyScriptContext(event);
     }
     
     private BaseWrappedException<StackTraceElement> traceStack(StackTraceElement current, Iterator<StackTraceElement> elements) {
