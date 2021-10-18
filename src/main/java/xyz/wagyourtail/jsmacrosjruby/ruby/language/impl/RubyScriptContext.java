@@ -1,34 +1,13 @@
 package xyz.wagyourtail.jsmacrosjruby.ruby.language.impl;
 
 import org.jruby.embed.ScriptingContainer;
-import xyz.wagyourtail.jsmacros.core.Core;
 import xyz.wagyourtail.jsmacros.core.event.BaseEvent;
-import xyz.wagyourtail.jsmacros.core.language.ScriptContext;
+import xyz.wagyourtail.jsmacros.core.language.BaseScriptContext;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.io.File;
 
-public class RubyScriptContext extends ScriptContext<ScriptingContainer> {
-    public boolean closed = false;
-    public AtomicInteger nonGCdMethodWrappers = new AtomicInteger(0);
-
-    public RubyScriptContext(BaseEvent event) {
-        super(event);
+public class RubyScriptContext extends BaseScriptContext<ScriptingContainer> {
+    public RubyScriptContext(BaseEvent event, File file) {
+        super(event, file);
     }
-
-    @Override
-    public boolean isContextClosed() {
-        return super.isContextClosed() || closed;
-    }
-    
-    @Override
-    public void closeContext() {
-        if (context != null) {
-            synchronized (this) {
-                closed = true;
-                Core.instance.threadContext.entrySet().stream().filter(e -> e.getValue() == this).forEach(e -> e.getKey().interrupt());
-            }
-        }
-    }
-    
 }

@@ -32,11 +32,33 @@ dependencies {
     implementation "org.jruby:jruby-complete:9.2.19.0"
     include "org.jruby:jruby-complete:9.2.19.0"
 
-    modImplementation "com.github.wagyourtail:JsMacros:${project.jsmacros_version}"
+    //partial fabric api
+    modImplementation "net.fabricmc.fabric-api:fabric-api-base:${project.api_base_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-lifecycle-events-v1:${project.lifecycle_events_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-key-binding-api-v1:${project.key_bind_api_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-resource-loader-v0:${project.resource_loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-command-api-v1:${project.command_api_version}"
+
+
+    modImplementation "com.github.wagyourtail:jsmacros:${project.jsmacros_version}"
+
+    implementation "org.graalvm.sdk:graal-sdk:${project.graal_version}"
+    implementation "org.graalvm.js:js:${project.graal_version}"
+    implementation "org.graalvm.truffle:truffle-api:${project.graal_version}"
+
+    //nullable not defined so...
+    implementation 'com.google.code.findbugs:jsr305:3.0.2'
+    implementation "org.graalvm.regex:regex:${project.graal_version}"
+
+    implementation group: 'com.ibm.icu', name: 'icu4j', version: '67.1'
+
+    implementation "io.noties:prism4j:${project.prism_version}"
 
     //nullable not defined so...
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
 
+    //for modmenu
+    modImplementation "net.fabricmc.fabric-api:fabric-screen-api-v1:1.0.4+155f865c13"
     // PSA: Some older mods, compiled on Loom 0.2.1, might have outdated Maven POMs.
     // You may need to force-disable transitiveness on them.
 }

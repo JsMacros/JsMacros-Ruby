@@ -12,7 +12,6 @@ public class JsMacrosRuby implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         JsMacros.core.addLanguage(new RubyLanguageDefinition(".rb", JsMacros.core));
-        JsMacros.core.sortLanguages();
         JsMacros.core.libraryRegistry.addLibrary(FWrapper.class);
     
 //        try {

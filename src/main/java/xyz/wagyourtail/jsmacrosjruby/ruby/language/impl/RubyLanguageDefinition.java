@@ -9,12 +9,14 @@ import xyz.wagyourtail.jsmacros.core.Core;
 import xyz.wagyourtail.jsmacros.core.config.ScriptTrigger;
 import xyz.wagyourtail.jsmacros.core.event.BaseEvent;
 import xyz.wagyourtail.jsmacros.core.language.BaseLanguage;
+import xyz.wagyourtail.jsmacros.core.language.BaseScriptContext;
 import xyz.wagyourtail.jsmacros.core.language.BaseWrappedException;
-import xyz.wagyourtail.jsmacros.core.language.ContextContainer;
-import xyz.wagyourtail.jsmacros.core.language.ScriptContext;
+import xyz.wagyourtail.jsmacros.core.language.EventContainer;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.io.FileReader;
+import java.io.StringReader;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -27,38 +29,39 @@ public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
         super(extension, runner);
     }
     
-    protected void runInstance(ContextContainer<ScriptingContainer> ctx, Executor e, Path cwd) throws Exception {
+    protected void runInstance(EventContainer<ScriptingContainer> ctx, Executor e, @Nullable Path cwd) throws Exception {
         ctx.getCtx().setContext(globalInstance);
-        
-        globalInstance.setCurrentDirectory(cwd.toString());
-        retrieveLibs(ctx).forEach((k,v) -> globalInstance.put(k.toLowerCase(Locale.ROOT), v));
+
+        if (cwd != null)
+            globalInstance.setCurrentDirectory(cwd.toString());
+        retrieveLibs(ctx.getCtx()).forEach((k,v) -> globalInstance.put(k.toLowerCase(Locale.ROOT), v));
 
         e.accept(globalInstance);
-
-        if (((RubyScriptContext) ctx.getCtx()).nonGCdMethodWrappers.get() == 0) {
-            ctx.getCtx().closeContext();
-        }
     }
     
     @Override
-    protected void exec(ContextContainer<ScriptingContainer> ctx, ScriptTrigger macro, File file, BaseEvent event) throws Exception {
+    protected void exec(EventContainer<ScriptingContainer> ctx, ScriptTrigger macro, BaseEvent event) throws Exception {
         runInstance(ctx, instance -> {
             instance.put("event", event);
-            instance.put("file", file);
+            instance.put("file", ctx.getCtx().getFile());
             instance.put("context", ctx);
     
-            instance.runScriptlet(new FileReader(file), file.getAbsolutePath());
-        }, file.getParentFile().toPath());
+            instance.runScriptlet(new FileReader(ctx.getCtx().getFile()), ctx.getCtx().getFile().getAbsolutePath());
+        }, ctx.getCtx().getFile().getParentFile().toPath());
         
     }
     
     @Override
-    public void exec(ContextContainer<ScriptingContainer> ctx, String script, Map<String, Object> globals, Path currentDir) throws Exception {
+    public void exec(EventContainer<ScriptingContainer> ctx, String script, Map<String, Object> globals) throws Exception {
         runInstance(ctx, instance -> {
             globals.forEach(instance::put);
             instance.put("context", ctx);
-            instance.runScriptlet(script);
-        }, currentDir);
+            if (ctx.getCtx().getFile() != null) {
+                instance.runScriptlet(new StringReader(script), ctx.getCtx().getFile().getAbsolutePath());
+            } else {
+                instance.runScriptlet(script);
+            }
+        }, ctx.getCtx().getFile() != null ? ctx.getCtx().getFile().getParentFile().toPath() : null);
     }
     
     @Override
@@ -78,8 +81,8 @@ public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
     }
     
     @Override
-    public ScriptContext<ScriptingContainer> createContext(BaseEvent event) {
-        return new RubyScriptContext(event);
+    public BaseScriptContext<ScriptingContainer> createContext(BaseEvent event, File path) {
+        return new RubyScriptContext(event, path);
     }
     
     private BaseWrappedException<StackTraceElement> traceStack(StackTraceElement current, Iterator<StackTraceElement> elements) {

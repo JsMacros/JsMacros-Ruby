@@ -7,79 +7,76 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import xyz.wagyourtail.jsmacros.core.Core;
 import xyz.wagyourtail.jsmacros.core.MethodWrapper;
-import xyz.wagyourtail.jsmacros.core.language.BaseLanguage;
-import xyz.wagyourtail.jsmacros.core.language.ContextContainer;
+import xyz.wagyourtail.jsmacros.core.language.BaseScriptContext;
 import xyz.wagyourtail.jsmacros.core.library.IFWrapper;
 import xyz.wagyourtail.jsmacros.core.library.Library;
-import xyz.wagyourtail.jsmacros.core.library.PerLanguageLibrary;
+import xyz.wagyourtail.jsmacros.core.library.PerExecLanguageLibrary;
 import xyz.wagyourtail.jsmacrosjruby.ruby.language.impl.RubyLanguageDefinition;
-import xyz.wagyourtail.jsmacrosjruby.ruby.language.impl.RubyScriptContext;
 
 import java.util.concurrent.Semaphore;
 
 @Library(value = "JavaWrapper", languages = RubyLanguageDefinition.class)
-public class FWrapper extends PerLanguageLibrary implements IFWrapper<RubyMethod> {
+public class FWrapper extends PerExecLanguageLibrary<ScriptingContainer> implements IFWrapper<RubyMethod> {
     
-    public FWrapper(Class<? extends BaseLanguage<ScriptingContainer>> language) {
-        super(language);
+    public FWrapper(BaseScriptContext context, Class language) {
+        super(context, language);
     }
     
     @Override
-    public <A, B, R> MethodWrapper<A, B, R> methodToJava(RubyMethod c) {
-        RubyScriptContext ctx = (RubyScriptContext) Core.instance.threadContext.get(Thread.currentThread());
-        ctx.nonGCdMethodWrappers.incrementAndGet();
+    public <A, B, R> MethodWrapper<A, B, R, ?> methodToJava(RubyMethod c) {
         return new RubyMethodWrapper<>(c, true, ctx);
     }
     
     @Override
-    public <A, B, R> MethodWrapper<A, B, R> methodToJavaAsync(RubyMethod c) {
-        RubyScriptContext ctx = (RubyScriptContext) Core.instance.threadContext.get(Thread.currentThread());
-        ctx.nonGCdMethodWrappers.incrementAndGet();
+    public <A, B, R> MethodWrapper<A, B, R, ?> methodToJavaAsync(RubyMethod c) {
         return new RubyMethodWrapper<>(c, false, ctx);
     }
     
     @Override
     public void stop() {
-        RubyScriptContext ctx = (RubyScriptContext) Core.instance.threadContext.get(Thread.currentThread());
         ctx.closeContext();
     }
 
 
 
-    private static class RubyMethodWrapper<T, U, R> extends MethodWrapper<T, U, R> {
+    private static class RubyMethodWrapper<T, U, R> extends MethodWrapper<T, U, R, BaseScriptContext<ScriptingContainer>> {
         private final RubyMethod fn;
         private final boolean await;
-        private final RubyScriptContext ctx;
-        private final ScriptingContainer sc;
 
-        RubyMethodWrapper(RubyMethod fn, boolean await, RubyScriptContext ctx) {
+        RubyMethodWrapper(RubyMethod fn, boolean await, BaseScriptContext<ScriptingContainer> ctx) {
+            super(ctx);
             this.fn = fn;
             this.await = await;
-            this.ctx = ctx;
-            this.sc = ctx.getContext().get();
         }
 
         private Object inner_accept(boolean await, Object... params) {
 
-            if (await && Core.instance.threadContext.get(Thread.currentThread()) == ctx) {
-                ThreadContext threadContext = sc.getProvider().getRuntime().getCurrentContext();
-                threadContext.pushNewScope(threadContext.getCurrentStaticScope());
-                IRubyObject[] rubyObjects = JavaUtil.convertJavaArrayToRuby(threadContext.runtime, params);
-                return fn.call(threadContext, rubyObjects, threadContext.getFrameBlock()).toJava(Object.class);
+            if (await) {
+                if (ctx.getBoundThreads().contains(Thread.currentThread())) {
+                    ThreadContext threadContext = ctx.getContext().getProvider().getRuntime().getCurrentContext();
+                    threadContext.pushNewScope(threadContext.getCurrentStaticScope());
+                    IRubyObject[] rubyObjects = JavaUtil.convertJavaArrayToRuby(threadContext.runtime, params);
+                    return fn.call(threadContext, rubyObjects, threadContext.getFrameBlock()).toJava(Object.class);
+                }
+
+                ctx.bindThread(Thread.currentThread());
             }
 
             Object[] retval = {null};
             Throwable[] error = {null};
             Semaphore lock = new Semaphore(0);
+            boolean joinedThread = Core.instance.profile.checkJoinedThreadStack();
 
             Thread t = new Thread(() -> {
-                synchronized (ctx) {
-                    if (ctx.closed) throw new RuntimeException("Context Closed");
-                    Core.instance.threadContext.put(Thread.currentThread(), ctx);
-                }
-                ThreadContext threadContext = sc.getProvider().getRuntime().getCurrentContext();
-                threadContext.pushNewScope(threadContext.getCurrentStaticScope());
+                if (ctx.isContextClosed()) throw new RuntimeException("Context Closed");
+                ctx.bindThread(Thread.currentThread());
+
                 try {
+                    if (await && joinedThread) {
+                        Core.instance.profile.joinedThreadStack.add(Thread.currentThread());
+                    }
+                    ThreadContext threadContext = ctx.getContext().getProvider().getRuntime().getCurrentContext();
+                    threadContext.pushNewScope(threadContext.getCurrentStaticScope());
                     IRubyObject[] rubyObjects = JavaUtil.convertJavaArrayToRuby(threadContext.runtime, params);
                     retval[0] = fn.call(threadContext, rubyObjects, threadContext.getFrameBlock()).toJava(Object.class);
                 } catch (Throwable ex) {
@@ -88,8 +85,10 @@ public class FWrapper extends PerLanguageLibrary implements IFWrapper<RubyMethod
                     }
                     error[0] = ex;
                 } finally {
-                    ContextContainer<?> cc = Core.instance.eventContexts.get(Thread.currentThread());
-                    if (cc != null) cc.releaseLock();
+                    ctx.unbindThread(Thread.currentThread());
+                    Core.instance.profile.joinedThreadStack.remove(Thread.currentThread());
+
+                    ctx.releaseBoundEventIfPresent(Thread.currentThread());
 
                     lock.release();
                 }
@@ -99,10 +98,12 @@ public class FWrapper extends PerLanguageLibrary implements IFWrapper<RubyMethod
             if (await) {
                 try {
                     lock.acquire();
+                    if (error[0] != null) throw new RuntimeException(error[0]);
                 } catch (InterruptedException ex) {
                     throw new RuntimeException(ex);
+                } finally {
+                    ctx.unbindThread(Thread.currentThread());
                 }
-                if (error[0] != null) throw new RuntimeException(error[0]);
             }
             return retval[0];
         }
@@ -151,14 +152,6 @@ public class FWrapper extends PerLanguageLibrary implements IFWrapper<RubyMethod
         public R get() {
             return (R) inner_accept(true);
         }
-
-
-        @Override
-        protected void finalize() throws Throwable {
-            int val = ctx.nonGCdMethodWrappers.decrementAndGet();
-            if (val == 0) ctx.closeContext();
-        }
-
     }
     
 }
