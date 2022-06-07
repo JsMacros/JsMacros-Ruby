@@ -49,44 +49,29 @@ public class FWrapper extends PerExecLanguageLibrary<ScriptingContainer> impleme
             this.await = await;
         }
 
-        private Object inner_accept(boolean await, Object... params) {
+        private void inner_accept(boolean await, Object... params) {
 
             if (await) {
-                if (ctx.getBoundThreads().contains(Thread.currentThread())) {
-                    ThreadContext threadContext = ctx.getContext().getProvider().getRuntime().getCurrentContext();
-                    threadContext.pushNewScope(threadContext.getCurrentStaticScope());
-                    IRubyObject[] rubyObjects = JavaUtil.convertJavaArrayToRuby(threadContext.runtime, params);
-                    return fn.call(threadContext, rubyObjects, threadContext.getFrameBlock()).toJava(Object.class);
-                }
-
-                ctx.bindThread(Thread.currentThread());
+                inner_apply(params);
+                return;
             }
 
-            Object[] retval = {null};
-            Throwable[] error = {null};
             Semaphore lock = new Semaphore(0);
-            boolean joinedThread = Core.instance.profile.checkJoinedThreadStack();
+            boolean joinedThread = Core.getInstance().profile.checkJoinedThreadStack();
 
             Thread t = new Thread(() -> {
-                if (ctx.isContextClosed()) throw new RuntimeException("Context Closed");
                 ctx.bindThread(Thread.currentThread());
 
                 try {
-                    if (await && joinedThread) {
-                        Core.instance.profile.joinedThreadStack.add(Thread.currentThread());
-                    }
                     ThreadContext threadContext = ctx.getContext().getProvider().getRuntime().getCurrentContext();
                     threadContext.pushNewScope(threadContext.getCurrentStaticScope());
                     IRubyObject[] rubyObjects = JavaUtil.convertJavaArrayToRuby(threadContext.runtime, params);
-                    retval[0] = fn.call(threadContext, rubyObjects, threadContext.getFrameBlock()).toJava(Object.class);
+                    fn.call(threadContext, rubyObjects, threadContext.getFrameBlock()).toJava(Object.class);
                 } catch (Throwable ex) {
-                    if (!await) {
-                        Core.instance.profile.logError(ex);
-                    }
-                    error[0] = ex;
+                    Core.getInstance().profile.logError(ex);
                 } finally {
                     ctx.unbindThread(Thread.currentThread());
-                    Core.instance.profile.joinedThreadStack.remove(Thread.currentThread());
+                    Core.getInstance().profile.joinedThreadStack.remove(Thread.currentThread());
 
                     ctx.releaseBoundEventIfPresent(Thread.currentThread());
 
@@ -94,18 +79,32 @@ public class FWrapper extends PerExecLanguageLibrary<ScriptingContainer> impleme
                 }
             });
             t.start();
+        }
 
-            if (await) {
-                try {
-                    lock.acquire();
-                    if (error[0] != null) throw new RuntimeException(error[0]);
-                } catch (InterruptedException ex) {
-                    throw new RuntimeException(ex);
-                } finally {
-                    ctx.unbindThread(Thread.currentThread());
-                }
+        private Object inner_apply(Object... params) {
+            if (ctx.getBoundThreads().contains(Thread.currentThread())) {
+                ThreadContext threadContext = ctx.getContext().getProvider().getRuntime().getCurrentContext();
+                threadContext.pushNewScope(threadContext.getCurrentStaticScope());
+                IRubyObject[] rubyObjects = JavaUtil.convertJavaArrayToRuby(threadContext.runtime, params);
+                return fn.call(threadContext, rubyObjects, threadContext.getFrameBlock()).toJava(Object.class);
             }
-            return retval[0];
+
+            try {
+                ctx.bindThread(Thread.currentThread());
+                if (Core.getInstance().profile.checkJoinedThreadStack()) {
+                    Core.getInstance().profile.joinedThreadStack.add(Thread.currentThread());
+                }
+                ThreadContext threadContext = ctx.getContext().getProvider().getRuntime().getCurrentContext();
+                threadContext.pushNewScope(threadContext.getCurrentStaticScope());
+                IRubyObject[] rubyObjects = JavaUtil.convertJavaArrayToRuby(threadContext.runtime, params);
+                return fn.call(threadContext, rubyObjects, threadContext.getFrameBlock()).toJava(Object.class);
+            } catch (Throwable ex) {
+                throw new RuntimeException(ex);
+            } finally {
+                ctx.releaseBoundEventIfPresent(Thread.currentThread());
+                ctx.unbindThread(Thread.currentThread());
+                Core.getInstance().profile.joinedThreadStack.remove(Thread.currentThread());
+            }
         }
 
         @Override
@@ -120,22 +119,22 @@ public class FWrapper extends PerExecLanguageLibrary<ScriptingContainer> impleme
 
         @Override
         public R apply(T t) {
-            return (R) inner_accept(true, t);
+            return (R) inner_apply(true, t);
         }
 
         @Override
         public R apply(T t, U u) {
-            return (R) inner_accept(true, t, u);
+            return (R) inner_apply(true, t, u);
         }
 
         @Override
         public boolean test(T t) {
-            return (boolean) inner_accept(true, t);
+            return (boolean) inner_apply(true, t);
         }
 
         @Override
         public boolean test(T t, U u) {
-            return (boolean) inner_accept(true, t, u);
+            return (boolean) inner_apply(true, t, u);
         }
 
         @Override
@@ -145,12 +144,12 @@ public class FWrapper extends PerExecLanguageLibrary<ScriptingContainer> impleme
 
         @Override
         public int compare(T o1, T o2) {
-            return (int) inner_accept(true, o1, o2);
+            return (int) inner_apply(true, o1, o2);
         }
 
         @Override
         public R get() {
-            return (R) inner_accept(true);
+            return (R) inner_apply(true);
         }
     }
     

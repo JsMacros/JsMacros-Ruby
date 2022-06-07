@@ -50,12 +50,14 @@ public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
         }, ctx.getCtx().getFile().getParentFile().toPath());
         
     }
-    
+
     @Override
-    public void exec(EventContainer<ScriptingContainer> ctx, String script, Map<String, Object> globals) throws Exception {
+    protected void exec(EventContainer<ScriptingContainer> ctx, String script, BaseEvent event) throws Exception {
         runInstance(ctx, instance -> {
-            globals.forEach(instance::put);
+            instance.put("event", event);
+            instance.put("file", ctx.getCtx().getFile());
             instance.put("context", ctx);
+
             if (ctx.getCtx().getFile() != null) {
                 instance.runScriptlet(new StringReader(script), ctx.getCtx().getFile().getAbsolutePath());
             } else {

@@ -1,16 +1,17 @@
 package xyz.wagyourtail.jsmacros.ruby.client;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.api.ModInitializer;
 import org.jruby.embed.ScriptingContainer;
 import xyz.wagyourtail.jsmacros.client.JsMacros;
 //import xyz.wagyourtail.jsmacros.ruby.config.RubyConfig;
 import xyz.wagyourtail.jsmacrosjruby.ruby.language.impl.RubyLanguageDefinition;
 import xyz.wagyourtail.jsmacrosjruby.ruby.library.impl.FWrapper;
 
-public class JsMacrosRuby implements ClientModInitializer {
+public class JsMacrosRuby implements ModInitializer {
     
     @Override
-    public void onInitializeClient() {
+    public void onInitialize() {
         JsMacros.core.addLanguage(new RubyLanguageDefinition(".rb", JsMacros.core));
         JsMacros.core.libraryRegistry.addLibrary(FWrapper.class);
     
