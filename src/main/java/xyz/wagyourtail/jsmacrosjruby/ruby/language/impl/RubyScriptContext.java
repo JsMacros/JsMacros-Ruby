@@ -10,4 +10,5 @@ public class RubyScriptContext extends BaseScriptContext<ScriptingContainer> {
     public RubyScriptContext(BaseEvent event, File file) {
         super(event, file);
     }
+
 }
