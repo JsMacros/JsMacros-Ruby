@@ -2,6 +2,7 @@ package xyz.wagyourtail.jsmacrosjruby.ruby.language.impl;
 
 import org.jruby.RubyException;
 import org.jruby.embed.EvalFailedException;
+import org.jruby.embed.LocalVariableBehavior;
 import org.jruby.embed.ScriptingContainer;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.backtrace.RubyStackTraceElement;
@@ -24,31 +25,35 @@ import java.util.Locale;
 import java.util.Map;
 
 public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
-    public static final ScriptingContainer globalInstance = new ScriptingContainer();
+    public static final ScriptingContainer globalInstance = new ScriptingContainer(LocalVariableBehavior.PERSISTENT);
     public RubyLanguageDefinition(String extension, Core runner) {
         super(extension, runner);
     }
-    
+
     protected void runInstance(EventContainer<ScriptingContainer> ctx, Executor e, @Nullable Path cwd) throws Exception {
         ctx.getCtx().setContext(globalInstance);
 
         if (cwd != null)
             globalInstance.setCurrentDirectory(cwd.toString());
-        retrieveLibs(ctx.getCtx()).forEach((k,v) -> globalInstance.put(k.toLowerCase(Locale.ROOT), v));
+
+        retrieveLibs(ctx.getCtx()).forEach((k,v) -> {
+            globalInstance.put(k.toLowerCase(Locale.ROOT), v);
+            globalInstance.runScriptlet(k + " = " + k.toLowerCase(Locale.ROOT));
+        });
 
         e.accept(globalInstance);
     }
-    
+
     @Override
     protected void exec(EventContainer<ScriptingContainer> ctx, ScriptTrigger macro, BaseEvent event) throws Exception {
         runInstance(ctx, instance -> {
             instance.put("event", event);
             instance.put("file", ctx.getCtx().getFile());
             instance.put("context", ctx);
-    
+
             instance.runScriptlet(new FileReader(ctx.getCtx().getFile()), ctx.getCtx().getFile().getAbsolutePath());
         }, ctx.getCtx().getFile().getParentFile().toPath());
-        
+
     }
 
     @Override
@@ -65,7 +70,7 @@ public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
             }
         }, ctx.getCtx().getFile() != null ? ctx.getCtx().getFile().getParentFile().toPath() : null);
     }
-    
+
     @Override
     public BaseWrappedException<?> wrapException(Throwable ex) {
         if (ex instanceof EvalFailedException) {
@@ -81,12 +86,12 @@ public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
         }
         return null;
     }
-    
+
     @Override
     public BaseScriptContext<ScriptingContainer> createContext(BaseEvent event, File path) {
         return new RubyScriptContext(event, path);
     }
-    
+
     private BaseWrappedException<StackTraceElement> traceStack(StackTraceElement current, Iterator<StackTraceElement> elements) {
         if (current.getClassName().equals("org.jruby.embed.internal.EmbedEvalUnitImpl")) return null;
         if (current.getClassName().startsWith("org.jruby")) return elements.hasNext() ? traceStack(elements.next(), elements) : null;
@@ -98,7 +103,7 @@ public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
         }
         return new BaseWrappedException<>(current, current.getMethodName(), loc, elements.hasNext() ? traceStack(elements.next(), elements) : null);
     }
-    
+
     private interface Executor {
         void accept(ScriptingContainer instance) throws Exception;
     }
