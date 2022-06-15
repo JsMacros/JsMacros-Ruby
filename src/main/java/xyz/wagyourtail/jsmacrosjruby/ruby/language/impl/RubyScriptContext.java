@@ -11,4 +11,12 @@ public class RubyScriptContext extends BaseScriptContext<ScriptingContainer> {
         super(event, file);
     }
 
+    @Override
+    public synchronized void closeContext() {
+        super.closeContext();
+//        if (getContext() != RubyLanguageDefinition.globalInstance) {
+            getContext().terminate();
+//        }
+    }
+
 }

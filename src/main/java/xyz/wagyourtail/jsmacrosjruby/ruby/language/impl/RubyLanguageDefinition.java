@@ -5,7 +5,10 @@ import org.jruby.embed.EvalFailedException;
 import org.jruby.embed.LocalContextScope;
 import org.jruby.embed.LocalVariableBehavior;
 import org.jruby.embed.ScriptingContainer;
+import org.jruby.embed.internal.BiVariableMap;
 import org.jruby.exceptions.RaiseException;
+import org.jruby.runtime.DynamicScope;
+import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.backtrace.RubyStackTraceElement;
 import xyz.wagyourtail.jsmacros.core.Core;
 import xyz.wagyourtail.jsmacros.core.config.ScriptTrigger;
@@ -27,25 +30,18 @@ import java.util.Locale;
 import java.util.Map;
 
 public class RubyLanguageDefinition extends BaseLanguage<ScriptingContainer> {
-    public static final ScriptingContainer globalInstance = new ScriptingContainer(LocalVariableBehavior.PERSISTENT);
     public RubyLanguageDefinition(String extension, Core runner) {
         super(extension, runner);
     }
 
     protected void runInstance(EventContainer<ScriptingContainer> ctx, Executor e, @Nullable Path cwd) throws Exception {
-        ctx.getCtx().setContext(globalInstance);
-
-        ScriptingContainer instance;
-        if (runner.config.getOptions(RubyConfig.class).useGlobalContext) instance = globalInstance;
-        else instance = new ScriptingContainer(LocalContextScope.SINGLETHREAD, LocalVariableBehavior.PERSISTENT);
+        ScriptingContainer instance = new ScriptingContainer(LocalContextScope.SINGLETHREAD);
+        ctx.getCtx().setContext(instance);
 
         if (cwd != null)
             instance.setCurrentDirectory(cwd.toString());
 
-        retrieveLibs(ctx.getCtx()).forEach((k,v) -> {
-            instance.put(k.toLowerCase(Locale.ROOT), v);
-            instance.runScriptlet(k + " = " + k.toLowerCase(Locale.ROOT));
-        });
+        retrieveLibs(ctx.getCtx()).forEach(instance::put);
 
         e.accept(instance);
     }

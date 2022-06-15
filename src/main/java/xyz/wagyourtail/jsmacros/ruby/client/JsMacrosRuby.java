@@ -14,11 +14,11 @@ public class JsMacrosRuby implements ModInitializer {
         JsMacros.core.addLanguage(new RubyLanguageDefinition(".rb", JsMacros.core));
         JsMacros.core.libraryRegistry.addLibrary(FWrapper.class);
     
-        try {
-            JsMacros.core.config.addOptions("ruby", RubyConfig.class);
-        } catch (IllegalAccessException | InstantiationException e) {
-            throw new RuntimeException(e);
-        }
+//        try {
+//            JsMacros.core.config.addOptions("ruby", RubyConfig.class);
+//        } catch (IllegalAccessException | InstantiationException e) {
+//            throw new RuntimeException(e);
+//        }
 
         Thread t = new Thread(() -> {
             ScriptingContainer instance = new ScriptingContainer();
