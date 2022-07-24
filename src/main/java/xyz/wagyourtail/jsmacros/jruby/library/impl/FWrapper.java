@@ -1,4 +1,4 @@
-package xyz.wagyourtail.jsmacrosjruby.ruby.library.impl;
+package xyz.wagyourtail.jsmacros.jruby.library.impl;
 
 import org.jruby.RubyMethod;
 import org.jruby.embed.ScriptingContainer;
@@ -11,14 +11,15 @@ import xyz.wagyourtail.jsmacros.core.language.BaseScriptContext;
 import xyz.wagyourtail.jsmacros.core.library.IFWrapper;
 import xyz.wagyourtail.jsmacros.core.library.Library;
 import xyz.wagyourtail.jsmacros.core.library.PerExecLanguageLibrary;
-import xyz.wagyourtail.jsmacrosjruby.ruby.language.impl.RubyLanguageDefinition;
+import xyz.wagyourtail.jsmacros.jruby.language.impl.JRubyLanguageDefinition;
+import xyz.wagyourtail.jsmacros.jruby.language.impl.JRubyScriptContext;
 
 import java.util.concurrent.Semaphore;
 
-@Library(value = "JavaWrapper", languages = RubyLanguageDefinition.class)
-public class FWrapper extends PerExecLanguageLibrary<ScriptingContainer> implements IFWrapper<RubyMethod> {
+@Library(value = "JavaWrapper", languages = JRubyLanguageDefinition.class)
+public class FWrapper extends PerExecLanguageLibrary<ScriptingContainer, JRubyScriptContext> implements IFWrapper<RubyMethod> {
     
-    public FWrapper(BaseScriptContext context, Class language) {
+    public FWrapper(JRubyScriptContext context, Class language) {
         super(context, language);
     }
     
@@ -39,11 +40,11 @@ public class FWrapper extends PerExecLanguageLibrary<ScriptingContainer> impleme
 
 
 
-    private static class RubyMethodWrapper<T, U, R> extends MethodWrapper<T, U, R, BaseScriptContext<ScriptingContainer>> {
+    private static class RubyMethodWrapper<T, U, R> extends MethodWrapper<T, U, R, JRubyScriptContext> {
         private final RubyMethod fn;
         private final boolean await;
 
-        RubyMethodWrapper(RubyMethod fn, boolean await, BaseScriptContext<ScriptingContainer> ctx) {
+        RubyMethodWrapper(RubyMethod fn, boolean await, JRubyScriptContext ctx) {
             super(ctx);
             this.fn = fn;
             this.await = await;
