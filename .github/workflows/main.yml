@@ -42,3 +42,9 @@ jobs:
           script: |
             const fs = require("fs")
             return fs.readdirSync("./build/libs/").filter(e => !e.endsWith("dev.jar") && !e.endsWith("sources.jar") && e.endsWith(".jar"))[0].replace(".jar", "");
+      - name: Upload to release
+        uses: JasonEtco/upload-to-release@master
+        with:
+          args: ./build/libs/${{ steps.fname.outputs.result }}.jar application/jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
